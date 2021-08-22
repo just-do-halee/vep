@@ -1,0 +1,30 @@
+[package]
+name = "vep"
+version = "0.1.0"
+authors = ["just-do-halee <just.do.halee@gmail.com>"]
+homepage = "https://github.com/just-do-halee/vep"
+repository = "https://github.com/just-do-halee/vep"
+
+description = "Variable-length Expansion Pass function. ( i.e. short password to long hashed password )"
+
+readme = "README.md"
+
+keywords = ["algorithms", "cryptography", "password", "expansion"]
+categories = ["cryptography", "algorithms", "no-std"]
+
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[features]
+default = []
+std = []
+
+
+[dependencies]
+
+
+[dev-dependencies]
+blake3 = "1.0.0"
+sha3 = "0.9.1"
+sha2 = "0.9.5"
+hex = "0.4.3"
