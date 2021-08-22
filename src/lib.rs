@@ -1,7 +1,13 @@
 // Licensed under either of Apache License, Version 2.0 or MIT license at your option.
 
-//! ```ignore
+//! # `Vep`
 //!
+//! Variable-length Expansion Pass function.
+//! ( i.e. short password to long hashed password )<br>
+//! (no dependencies, 22 lines pure safe codes, also supported no-std)
+//! <a href="https://i.ibb.co/kGnwXXf/vep.png">check algorithm</a>
+//! ## How to
+//! ```ignore
 //! use sha2::Sha256;
 //! impl vep::Digester for Sha256 {
 //!     fn digest(&mut self, bytes: &[u8]) -> Vec<u8> {
@@ -40,7 +46,8 @@ impl<D: Digester> Vep<D> {
         let mut final_output = Vec::new();
         for (i, &byte) in bytes.iter().enumerate() {
             salt = bytes[rev_i - i];
-            for _ in 0..byte {
+            let times = byte + 1;
+            for _ in 0..times {
                 buf.push(salt);
                 buf = self.0.digest(buf.as_slice());
             }
