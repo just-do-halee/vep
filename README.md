@@ -22,14 +22,14 @@ Variable-length Expansion Pass function. ( i.e. short password to long hashed pa
 
 ```toml
 [dependencies]
-vep = "1.0.0"
+vep = "1.0.1"
 ```
 
 or
 
 ```toml
 [dependencies]
-vep = { version = "1.0.0", default-features = false } # no-std
+vep = { version = "1.0.1", default-features = false } # no-std
 ```
 
 ## How to
