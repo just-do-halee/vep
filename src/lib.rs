@@ -1,56 +1,76 @@
 // Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+// Copyright 2021 Hwakyeom Kim(=just-do-halee)
 
-//! # `Vep`
+//! # **`vep`**
 //!
 //! Variable-length Expansion Pass function.
 //! ( i.e. short password to long hashed password )<br>
-//! (no dependencies, 22 lines pure safe codes, also supported no-std)
+//! (supported no-std)
 //! <a href="https://i.ibb.co/kGnwXXf/vep.png">check algorithm</a>
 //! ## How to
-//! ```ignore
-//! use sha2::Sha256;
-//! impl vep::Digester for Sha256 {
-//!     fn digest(&mut self, bytes: &[u8]) -> Vec<u8> {
-//!         self.update(bytes);
-//!         self.finalize_reset().to_vec()
-//!     }
-//! }
+//! ```rust
 //!
+//! use vep::Vep;
+//! use sha2::{Sha256, Digest}; // can be any hasher(dyn Digest from `digest` crate)
 //!
 //! let src = b"hello vep!"; // <- 10 bytes
 //! let expanded = Vep(Sha256::new()).expand(src); // -> 10 * 32 bytes == 320 bytes
 //!
+//!
 //! ```
 
 #![deny(unsafe_code)]
-#![no_std]
-extern crate alloc;
+#![cfg_attr(not(feature = "std"), not(test), no_std)]
 
-#[cfg(feature = "default")]
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
 extern crate std;
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+pub mod parts {
+    pub use digest::generic_array::{ArrayLength, GenericArray};
+    pub use digest::Digest;
+    pub use typenum as BytesSize;
+}
 
 pub trait Digester {
-    fn digest(&mut self, bytes: &[u8]) -> Vec<u8>;
+    type OutputSize: parts::ArrayLength<u8>;
+    fn digest(&mut self, bytes: &[u8]) -> parts::GenericArray<u8, Self::OutputSize>;
 }
+
+impl<D: parts::Digest> Digester for D {
+    type OutputSize = D::OutputSize;
+    #[inline]
+    fn digest(&mut self, bytes: &[u8]) -> parts::GenericArray<u8, Self::OutputSize> {
+        self.update(bytes);
+        self.finalize_reset()
+    }
+}
+
 pub struct Vep<D: Digester>(pub D);
 
 impl<D: Digester> Vep<D> {
-    pub fn expand<T: AsRef<[u8]>>(mut self, bytes: T) -> Vec<u8> {
+    pub fn expand(mut self, bytes: impl AsRef<[u8]>) -> Vec<u8> {
         let bytes = bytes.as_ref();
         let rev_i = bytes.len() - 1;
         let mut salt;
         let mut buf = Vec::from(bytes);
+        let mut temp;
         let mut final_output = Vec::new();
         for (i, &byte) in bytes.iter().enumerate() {
             salt = bytes[rev_i - i];
-            let times = byte + 1;
+            let times = byte;
+            buf.push(salt);
+            temp = self.0.digest(buf.as_slice());
             for _ in 0..times {
-                buf.push(salt);
-                buf = self.0.digest(buf.as_slice());
+                temp = self.0.digest(temp.as_slice());
             }
+            buf = temp.to_vec();
             final_output.extend(buf.iter());
         }
         final_output
@@ -59,37 +79,15 @@ impl<D: Digester> Vep<D> {
 
 #[cfg(test)]
 mod tests {
-    extern crate std;
-    use std::eprintln;
-
     use super::*;
 
     // ---------------  blake3  ---------------
+    use blake3::traits::digest::Digest;
     use blake3::Hasher;
-    impl Digester for Hasher {
-        fn digest(&mut self, bytes: &[u8]) -> Vec<u8> {
-            self.reset();
-            self.update(bytes);
-            self.finalize().as_bytes().to_vec()
-        }
-    }
     // ---------------  sha3_512  ---------------
-    use sha3::{Digest, Sha3_512};
-    impl Digester for Sha3_512 {
-        fn digest(&mut self, bytes: &[u8]) -> Vec<u8> {
-            self.update(bytes);
-            self.finalize_reset().to_vec()
-        }
-    }
-
+    use sha3::Sha3_512;
     // ---------------  sha2_384  ---------------
     use sha2::Sha384 as Sha2_384;
-    impl Digester for Sha2_384 {
-        fn digest(&mut self, bytes: &[u8]) -> Vec<u8> {
-            self.update(bytes);
-            self.finalize_reset().to_vec()
-        }
-    }
 
     #[test]
     fn it_works() {
