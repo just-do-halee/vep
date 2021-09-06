@@ -22,14 +22,14 @@ Variable-length Expansion Pass function. ( i.e. short password to long hashed pa
 
 ```toml
 [dependencies]
-vep = "1.0.1"
+vep = "2.0.0"
 ```
 
 or
 
 ```toml
 [dependencies]
-vep = { version = "1.0.1", default-features = false } # no-std
+vep = { version = "2.0.0", default-features = false } # no-std
 ```
 
 ## How to
@@ -40,8 +40,10 @@ use sha2::{Sha256, Digest}; // can be any hasher(dyn Digest from `digest` crate)
 
 let src = b"hello vep!"; // <- 10 bytes
 let expanded = Vep(Sha256::new()).expand(src); // -> 10 * 32 bytes == 320 bytes
+
+assert_eq!(expanded.len(), Vep::<Sha256>::output_size_calc(src));
 ```
 ---
 ## * Algorithm
 ---
-![Vep Image](https://i.ibb.co/kGnwXXf/vep.png)
+![Vep Image](https://i.ibb.co/WgTkyXF/vep2.png)

@@ -6,7 +6,7 @@
 //! Variable-length Expansion Pass function.
 //! ( i.e. short password to long hashed password )<br>
 //! (supported no-std)
-//! <a href="https://i.ibb.co/kGnwXXf/vep.png">check algorithm</a>
+//! <a href="https://i.ibb.co/WgTkyXF/vep2.png">check algorithm</a>
 //! ## How to
 //! ```rust
 //!
@@ -16,7 +16,7 @@
 //! let src = b"hello vep!"; // <- 10 bytes
 //! let expanded = Vep(Sha256::new()).expand(src); // -> 10 * 32 bytes == 320 bytes
 //!
-//!
+//! assert_eq!(expanded.len(), Vep::<Sha256>::output_size_calc(src));
 //! ```
 
 #![deny(unsafe_code)]
@@ -40,14 +40,29 @@ pub mod parts {
 
 pub trait Digester {
     type OutputSize: parts::ArrayLength<u8>;
-    fn digest(&mut self, bytes: &[u8]) -> parts::GenericArray<u8, Self::OutputSize>;
+    fn output_size() -> usize;
+    fn digest(&mut self, data: impl AsRef<[u8]>) -> parts::GenericArray<u8, Self::OutputSize>;
+    fn update(&mut self, data: impl AsRef<[u8]>);
+    fn finalize_reset(&mut self) -> parts::GenericArray<u8, Self::OutputSize>;
 }
 
 impl<D: parts::Digest> Digester for D {
     type OutputSize = D::OutputSize;
     #[inline]
-    fn digest(&mut self, bytes: &[u8]) -> parts::GenericArray<u8, Self::OutputSize> {
-        self.update(bytes);
+    fn output_size() -> usize {
+        D::output_size()
+    }
+    #[inline]
+    fn update(&mut self, data: impl AsRef<[u8]>) {
+        self.update(data);
+    }
+    #[inline]
+    fn finalize_reset(&mut self) -> parts::GenericArray<u8, Self::OutputSize> {
+        self.finalize_reset()
+    }
+    #[inline]
+    fn digest(&mut self, data: impl AsRef<[u8]>) -> parts::GenericArray<u8, Self::OutputSize> {
+        self.update(data);
         self.finalize_reset()
     }
 }
@@ -55,13 +70,21 @@ impl<D: parts::Digest> Digester for D {
 pub struct Vep<D: Digester>(pub D);
 
 impl<D: Digester> Vep<D> {
+    /// very cheap
+    #[inline]
+    pub fn output_size_calc(bytes: impl AsRef<[u8]>) -> usize {
+        bytes.as_ref().len() * D::output_size()
+    }
     pub fn expand(mut self, bytes: impl AsRef<[u8]>) -> Vec<u8> {
         let bytes = bytes.as_ref();
-        let rev_i = bytes.len() - 1;
+        let bytes_len = bytes.len();
+        let rev_i = bytes_len - 1;
         let mut salt;
         let mut buf = Vec::from(bytes);
         let mut temp;
-        let mut final_output = Vec::new();
+        let mut last_salt = Vec::with_capacity(bytes_len);
+        let mut middle_output = Vec::with_capacity(bytes_len);
+
         for (i, &byte) in bytes.iter().enumerate() {
             salt = bytes[rev_i - i];
             let times = byte;
@@ -71,9 +94,18 @@ impl<D: Digester> Vep<D> {
                 temp = self.0.digest(temp.as_slice());
             }
             buf = temp.to_vec();
-            final_output.extend(buf.iter());
+            last_salt.push(buf[0]);
+            middle_output.push(temp);
         }
-        final_output
+        middle_output
+            .iter_mut()
+            .zip(last_salt.iter())
+            .flat_map(|(data, &salt)| {
+                self.0.update(data);
+                self.0.update(&[salt]);
+                self.0.finalize_reset()
+            })
+            .collect() // final output
     }
 }
 
@@ -98,14 +130,17 @@ mod tests {
         let blake3_expanded = Vep(Hasher::new()).expand(src); // output = 32 bytes == 256 bits
         let b_len = blake3_expanded.len();
         assert_eq!(src_len * 32, b_len); // == 384 bytes == 3072 bits
+        assert_eq!(b_len, Vep::<Hasher>::output_size_calc(src));
 
         let sha2_expanded = Vep(Sha2_384::new()).expand(src); // output = 48 bytes == 384 bits
         let s2_len = sha2_expanded.len();
         assert_eq!(src_len * 48, s2_len); // == 576 bytes == 4608 bits
+        assert_eq!(s2_len, Vep::<Sha2_384>::output_size_calc(src));
 
         let sha3_expanded = Vep(Sha3_512::new()).expand(src); // output = 64 bytes == 512 bits
         let s3_len = sha3_expanded.len();
         assert_eq!(src_len * 64, s3_len); // == 768 bytes == 6144 bits
+        assert_eq!(s3_len, Vep::<Sha3_512>::output_size_calc(src));
 
         eprintln!(
             "vep(blake3_256) = {} ({})\n",

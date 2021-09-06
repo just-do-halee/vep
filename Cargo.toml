@@ -1,6 +1,6 @@
 [package]
 name = "vep"
-version = "1.0.1"
+version = "2.0.0"
 authors = ["just-do-halee <just.do.halee@gmail.com>"]
 homepage = "https://github.com/just-do-halee/vep"
 repository = "https://github.com/just-do-halee/vep"

@@ -1,3 +1,11 @@
+## 2.0.0 (September 6, 2021)
+
+### Release 2.0.0
+* more secure and powerful additional algorithm
+* more efficient allocating(with_capacity for vec)
+
+---
+
 ## 1.0.1 (September 3, 2021)
 
 ### A typing error.
