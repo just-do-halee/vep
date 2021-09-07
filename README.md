@@ -2,7 +2,6 @@
 
 Variable-length Expansion Pass function. ( i.e. short password to long hashed password )
 
-(supported no-std)  
 
 [![CI][ci-badge]][ci-url]
 [![Crates.io][crates-badge]][crates-url]
@@ -22,15 +21,17 @@ Variable-length Expansion Pass function. ( i.e. short password to long hashed pa
 
 ```toml
 [dependencies]
-vep = "2.0.0"
+vep = "2.1.0"
 ```
 
 or
 
 ```toml
 [dependencies]
-vep = { version = "2.0.0", default-features = false } # no-std
+vep = { version = "2.1.0", default-features = false } # no-std
 ```
+
+---
 
 ## How to
 
@@ -39,9 +40,17 @@ use vep::Vep;
 use sha2::{Sha256, Digest}; // can be any hasher(dyn Digest from `digest` crate)
 
 let src = b"hello vep!"; // <- 10 bytes
-let expanded = Vep(Sha256::new()).expand(src); // -> 10 * 32 bytes == 320 bytes
+let expanded = Vep(Sha256::new()).expand(src); // -> 10 * 32 bytes == `320 bytes`
 
 assert_eq!(expanded.len(), Vep::<Sha256>::output_size_calc(src));
+```
+
+## Fixed size available
+```rust
+let src = b"hello vep!"; // <- 10 bytes
+let result = Vep(Sha256::new()).expand_and_then_reduce(src); // -> 320 bytes -> `32 bytes` (reduced)
+
+assert_eq!(result.len(), Vep::<Sha256>::reduced_size_calc());
 ```
 ---
 ## * Algorithm

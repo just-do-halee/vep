@@ -1,3 +1,11 @@
+## 2.1.0 (September 7, 2021)
+
+### Release 2.1.0
+* input bytes length checking (padding 2)
+* new function `expand_and_then_reduce()` (fixed size)
+
+---
+
 ## 2.0.0 (September 6, 2021)
 
 ### Release 2.0.0
